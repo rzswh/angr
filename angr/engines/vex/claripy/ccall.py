@@ -1531,27 +1531,29 @@ def armg_calculate_flag_n(state, cc_op, cc_dep1, cc_dep2, cc_dep3):
     flag = None
 
     if concrete_op == ARMG_CC_OP_COPY:
-        flag = claripy.LShR(cc_dep1, ARMG_CC_SHIFT_N) & 1
+        flag = claripy.Extract(ARMG_CC_SHIFT_N, ARMG_CC_SHIFT_N, cc_dep1)
     elif concrete_op == ARMG_CC_OP_ADD:
         res = cc_dep1 + cc_dep2
-        flag = claripy.LShR(res, 31)
+        flag = claripy.Extract(31, 31, res)
     elif concrete_op == ARMG_CC_OP_SUB:
         res = cc_dep1 - cc_dep2
-        flag = claripy.LShR(res, 31)
+        flag = claripy.Extract(31, 31, res)
     elif concrete_op == ARMG_CC_OP_ADC:
         res = cc_dep1 + cc_dep2 + cc_dep3
-        flag = claripy.LShR(res, 31)
+        flag = claripy.Extract(31, 31, res)
     elif concrete_op == ARMG_CC_OP_SBB:
         res = cc_dep1 - cc_dep2 - (cc_dep3 ^ 1)
-        flag = claripy.LShR(res, 31)
+        flag = claripy.Extract(31, 31, res)
     elif concrete_op == ARMG_CC_OP_LOGIC:
-        flag = claripy.LShR(cc_dep1, 31)
+        flag = claripy.Extract(31, 31, cc_dep1)
     elif concrete_op == ARMG_CC_OP_MUL:
-        flag = claripy.LShR(cc_dep1, 31)
+        flag = claripy.Extract(31, 31, cc_dep1)
     elif concrete_op == ARMG_CC_OP_MULL:
-        flag = claripy.LShR(cc_dep2, 31)
+        flag = claripy.Extract(31, 31, cc_dep1)
 
     if flag is not None:
+        if len(flag) < 32:
+            flag = flag.zero_extend(32 - len(flag))
         return flag
     l.error("Unknown cc_op %s (armg_calculate_flag_n)", cc_op)
     raise SimCCallError("Unknown cc_op %s" % cc_op)
@@ -1566,7 +1568,7 @@ def armg_calculate_flag_z(state, cc_op, cc_dep1, cc_dep2, cc_dep3):
     flag = None
 
     if concrete_op == ARMG_CC_OP_COPY:
-        flag = claripy.LShR(cc_dep1, ARMG_CC_SHIFT_Z) & 1
+        flag = claripy.Extract(ARMG_CC_SHIFT_Z, ARMG_CC_SHIFT_Z, cc_dep1).zero_extend(31)
     elif concrete_op == ARMG_CC_OP_ADD:
         res = cc_dep1 + cc_dep2
         flag = arm_zerobit(state, res)
@@ -1598,7 +1600,7 @@ def armg_calculate_flag_c(state, cc_op, cc_dep1, cc_dep2, cc_dep3):
     flag = None
 
     if concrete_op == ARMG_CC_OP_COPY:
-        flag = claripy.LShR(cc_dep1, ARMG_CC_SHIFT_C) & 1
+        flag = claripy.Extract(ARMG_CC_SHIFT_C, ARMG_CC_SHIFT_C, cc_dep1)
     elif concrete_op == ARMG_CC_OP_ADD:
         res = cc_dep1 + cc_dep2
         flag = boolean_extend(claripy.ULT, res, cc_dep1, 32)
@@ -1618,11 +1620,13 @@ def armg_calculate_flag_c(state, cc_op, cc_dep1, cc_dep2, cc_dep3):
     elif concrete_op == ARMG_CC_OP_LOGIC:
         flag = cc_dep2
     elif concrete_op == ARMG_CC_OP_MUL:
-        flag = (claripy.LShR(cc_dep3, 1)) & 1
+        flag = claripy.Extract(1, 1, cc_dep3)
     elif concrete_op == ARMG_CC_OP_MULL:
-        flag = (claripy.LShR(cc_dep3, 1)) & 1
+        flag = claripy.Extract(1, 1, cc_dep3)
 
     if flag is not None:
+        if len(flag) < 32:
+            flag = flag.zero_extend(32 - len(flag))
         return flag
 
     l.error("Unknown cc_op %s (armg_calculate_flag_c)", cc_op)
@@ -1634,31 +1638,33 @@ def armg_calculate_flag_v(state, cc_op, cc_dep1, cc_dep2, cc_dep3):
     flag = None
 
     if concrete_op == ARMG_CC_OP_COPY:
-        flag = claripy.LShR(cc_dep1, ARMG_CC_SHIFT_V) & 1
+        flag = claripy.Extract(ARMG_CC_SHIFT_V, ARMG_CC_SHIFT_V, cc_dep1)
     elif concrete_op == ARMG_CC_OP_ADD:
         res = cc_dep1 + cc_dep2
         v = (res ^ cc_dep1) & (res ^ cc_dep2)
-        flag = claripy.LShR(v, 31)
+        flag = claripy.Extract(31, 31, v)
     elif concrete_op == ARMG_CC_OP_SUB:
         res = cc_dep1 - cc_dep2
         v = (cc_dep1 ^ cc_dep2) & (cc_dep1 ^ res)
-        flag = claripy.LShR(v, 31)
+        flag = claripy.Extract(31, 31, v)
     elif concrete_op == ARMG_CC_OP_ADC:
         res = cc_dep1 + cc_dep2 + cc_dep3
         v = (res ^ cc_dep1) & (res ^ cc_dep2)
-        flag = claripy.LShR(v, 31)
+        flag = claripy.Extract(31, 31, v)
     elif concrete_op == ARMG_CC_OP_SBB:
         res = cc_dep1 - cc_dep2 - (cc_dep3 ^ 1)
         v = (cc_dep1 ^ cc_dep2) & (cc_dep1 ^ res)
-        flag = claripy.LShR(v, 31)
+        flag = claripy.Extract(31, 31, v)
     elif concrete_op == ARMG_CC_OP_LOGIC:
         flag = cc_dep3
     elif concrete_op == ARMG_CC_OP_MUL:
-        flag = cc_dep3 & 1
+        flag = claripy.Extract(0, 0, cc_dep3)
     elif concrete_op == ARMG_CC_OP_MULL:
-        flag = cc_dep3 & 1
+        flag = claripy.Extract(0, 0, cc_dep3)
 
     if flag is not None:
+        if len(flag) < 32:
+            flag = flag.zero_extend(32 - len(flag))
         return flag
 
     l.error("Unknown cc_op %s (armg_calculate_flag_v)", cc_op)
